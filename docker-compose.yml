@@ -1,0 +1,10 @@
+version: '3'
+services:
+  go-discord-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: go-discord-bot
+    container_name: go-discord-bot
+    volumes:
+      - ~/.aws/credentials:/home/nonroot/.aws/credentials
