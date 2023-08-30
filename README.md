@@ -5,7 +5,7 @@
 - Amazon EC2 Instance の起動停止
 
 ## Environment
-- 環境変数 `MINECRAFT_INSTANCE_ID` を設定しておく。
+- 環境変数 `INSTANCE_ID` を設定しておく。
 - `~/.aws/credentials` に AWS の認証情報を書いておく。
 
 ## Docker

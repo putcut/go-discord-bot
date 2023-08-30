@@ -26,7 +26,7 @@ var (
 	err        error
 	discord    *discordgo.Session
 	ec2Client  *ec2.Client
-	instanceId = os.Getenv("MINECRAFT_INSTANCE_ID")
+	instanceId = os.Getenv("INSTANCE_ID")
 )
 
 func main() {
