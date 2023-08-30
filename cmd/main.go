@@ -256,7 +256,7 @@ func pollingStartInstance() error {
 
 func pollingStopInstance() error {
 	errorCh := make(chan error)
-	timeout := time.After(60 * time.Second)
+	timeout := time.After(120 * time.Second)
 
 	go pollingInstanceState(80, errorCh)
 	for {
