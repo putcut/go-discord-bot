@@ -1,5 +1,5 @@
 # Go Discord Bot
-プライベート用 Discord Bot
+Amazon EC2 上で動かすプライベート用 Minecraft Server のための Discord Bot
 
 ## Features
 - Amazon EC2 Instance の起動停止
