@@ -6,7 +6,5 @@ services:
       dockerfile: Dockerfile
     image: go-discord-bot
     container_name: go-discord-bot
-    environment:
-      - INSTANCE_ID
     volumes:
       - ~/.aws/credentials:/home/nonroot/.aws/credentials
