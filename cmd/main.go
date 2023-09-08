@@ -16,7 +16,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/bwmarrin/discordgo"
+	"github.com/robfig/cron/v3"
 )
+
+type AppConfig struct {
+	InstanceId string `json:"instance_id"`
+	ChannelId  string `json:"channel_id"`
+}
+
+type SecretData struct {
+	DiscordBotToken string `json:"discord-bot-token"`
+}
 
 const (
 	secretName = "discord-bot-token"
@@ -26,17 +36,33 @@ var (
 	err        error
 	discord    *discordgo.Session
 	ec2Client  *ec2.Client
-	instanceId = os.Getenv("INSTANCE_ID")
+	instanceId string
+	channelId  string
 )
 
 func main() {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	awsCfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		log.Fatalf("Fail to load aws config. %v", err)
 	}
 
-	smClient := secretsmanager.NewFromConfig(cfg)
+	appConfigFile, err := os.Open("app_config.json")
+	if err != nil {
+		log.Fatalf("Fail to open app_config: %v", err)
+	}
+	defer appConfigFile.Close()
 
+	var appConfig AppConfig
+	decoder := json.NewDecoder(appConfigFile)
+	err = decoder.Decode(&appConfig)
+	if err != nil {
+		log.Fatalf("Fail to decode app_config: %v", err)
+	}
+	instanceId = appConfig.InstanceId
+	channelId = appConfig.ChannelId
+
+	// discord token を Secrets Manager から取得
+	smClient := secretsmanager.NewFromConfig(awsCfg)
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretName),
 	}
@@ -44,15 +70,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Fail to get secret value. %v", err)
 	}
-
-	// JSONデータをパースしてマップに変換
-	var secretData map[string]interface{}
+	// Json文字列をマッピング
+	var secretData SecretData
 	err = json.Unmarshal([]byte(*result.SecretString), &secretData)
 	if err != nil {
-		log.Fatalf("Failed to parse secret data. %v", err)
+		log.Fatalf("Failed to unmarshal secret data. %v", err)
 	}
-	// シークレット値
-	token := secretData[secretName].(string)
+	token := secretData.DiscordBotToken
 
 	discord, err = discordgo.New("Bot " + token)
 	if err != nil {
@@ -68,7 +92,12 @@ func main() {
 		log.Fatalf("Fail to open connection. %v", err)
 	}
 
-	ec2Client = ec2.NewFromConfig(cfg)
+	c := cron.New()
+	c.AddFunc("0 8 * * *", dailyCheck)
+	c.Start()
+	defer c.Stop()
+
+	ec2Client = ec2.NewFromConfig(awsCfg)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
@@ -307,4 +336,14 @@ func getPublicIpAddress() (string, error) {
 	}
 	instance := reservation.Instances[0]
 	return *instance.PublicIpAddress, nil
+}
+
+func dailyCheck() {
+	instanceStatusCode, err := getInstanceStateCode()
+	if err != nil {
+		discord.ChannelMessageSend(channelId, "[Error] getInstanceStateCode: "+err.Error())
+	}
+	if *instanceStatusCode != 80 {
+		discord.ChannelMessageSend(channelId, "[Daily Check] Instance has not stopped.")
+	}
 }
