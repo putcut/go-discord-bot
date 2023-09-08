@@ -12,5 +12,6 @@ FROM gcr.io/distroless/static-debian11:nonroot
 WORKDIR /
 
 COPY --from=builder --chown=nonroot:nonroot /build/main /main
+COPY --from=builder --chown=nonroot:nonroot /build/app_config.json /app_config.json
 
 CMD ["/main"]
